@@ -37,8 +37,17 @@ def login_user(user: UserLogin, db: Session = Depends(get_db)):
     user_db = db.query(User).filter(User.email == user.email).first()
     if not user_db:
         raise HTTPException(status_code=400, detail="Email does not exist")
-    if not bcrypt.checkpw(user.password.encode(), user_db.password):
-        raise HTTPException(status_code=400, detail="Wrong password")
+
+    # Check if password is set and valid before checking
+    if not user_db.password:
+        raise HTTPException(status_code=400, detail="Email does not exist")
+
+    try:
+        if not bcrypt.checkpw(user.password.encode(), user_db.password):
+            raise HTTPException(status_code=400, detail="Wrong password")
+    except (ValueError, TypeError):
+        # Handle case where password hash is invalid
+        raise HTTPException(status_code=400, detail="Email does not exist")
 
     token = jwt.encode({"id": user_db.id}, "password_key")
     return {"token": token, "user": user_db}
